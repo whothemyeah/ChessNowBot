@@ -5,28 +5,42 @@ import config from "config";
 import * as fs from "fs";
 import http from "http";
 import https from "https";
+import express from "express";
+import cors from "cors";
 import serveStatic from "serve-static";
+import path from "path";
 
 import {GameServer} from "@/GameServer/GameServer";
-import {ChessNowBot} from "@/Telegram/ChessNowBot";
+import authRoutes from "@/Auth/AuthRoutes";
 
-const serve = serveStatic("public", {
-    index: ["index.html"],
-});
+// Create Express app
+const app = express();
 
-let requestHandler;
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// API routes
+app.use('/api/auth', authRoutes);
+
+// Serve static files
 if (config.get<boolean>("server.static")) {
-    requestHandler = (
-        req: http.IncomingMessage,
-        res: http.ServerResponse<http.IncomingMessage> & {req: http.IncomingMessage}
-    ) => {
-        serve(req, res, (err) => {
-            res.writeHead(err?.statusCode || 404);
-            res.end();
-        });
-    };
+    app.use(serveStatic("public", {
+        index: ["index.html"],
+    }));
+    
+    // For SPA routing - serve index.html for any non-API routes
+    app.get('*', (req, res) => {
+        if (!req.path.startsWith('/api')) {
+            res.sendFile(path.resolve('public', 'index.html'));
+        } else {
+            res.status(404).json({ error: 'API endpoint not found' });
+        }
+    });
 }
 
+// Create HTTP/HTTPS server
 let server: http.Server | https.Server;
 
 if (config.get<boolean>("server.https")) {
@@ -35,14 +49,16 @@ if (config.get<boolean>("server.https")) {
         cert: fs.readFileSync(config.get<string>("server.cert")),
     };
 
-    server = https.createServer(options, requestHandler);
+    server = https.createServer(options, app);
 } else {
-    server = http.createServer(requestHandler);
+    server = http.createServer(app);
 }
 
+// Initialize game server
 const gameServer = new GameServer(server);
 
-export const bot = new ChessNowBot(gameServer);
-
-server.listen(config.get<number>("server.port"));
-bot.launch();
+// Start server
+const port = config.get<number>("server.port");
+server.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+});

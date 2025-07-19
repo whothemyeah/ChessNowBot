@@ -73,12 +73,13 @@ export class GameClient extends TypedEventEmitter<GameClientEvents> {
         return color === Color.White ? Color.Black : Color.White;
     }
 
-    public constructor() {
+    public constructor(token: string, roomId: string) {
         super();
 
         this.socket = SocketIO.io(import.meta.env.VITE_SERVER_URL, {
             auth: {
-                initData: window.Telegram.WebApp.initData || window.fakeInitData,
+                token,
+                roomId,
             },
             transports: ["polling", "websocket"],
         });

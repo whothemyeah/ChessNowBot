@@ -1,14 +1,14 @@
 {
-    bot: {
-        testEnv: false,
-    },
     server: {
         https: false,
         port: 3000,
         static: false,
     },
+    auth: {
+        jwtSecret: "your-secret-key-change-in-production",
+        jwtExpiresIn: "7d",
+    },
     gameServer: {
-        validateInitData: true,
         inactivityTimeout: 300,
         disconnectTimeout: 180,
         fakeRoom: {

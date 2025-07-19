@@ -90,29 +90,31 @@ export enum PieceSymbol {
 }
 
 /**
- * Represents a user authenticated through Telegram
+ * Represents an authenticated user
  */
 export interface User {
     /**
-     * Telegram user's id
-     * @see {@link https://core.telegram.org/bots/api#user}
+     * User's unique ID
      */
     id: number;
 
     /**
-     * Telegram user's first_name and last_name joined
-     * @see {@link https://core.telegram.org/bots/api#user}
+     * User's email address
+     */
+    email: string;
+
+    /**
+     * User's full name
      */
     fullName: string;
 
     /**
-     * Telegram user's username
-     * @see {@link https://core.telegram.org/bots/api#user}
+     * User's username (optional)
      */
     username?: string;
 
     /**
-     * Data-URL of Telegram user's first profile picture
+     * URL to user's avatar image (optional)
      */
     avatarURL?: string;
 }
@@ -370,12 +372,14 @@ export interface TimerState {
  */
 export interface AuthPayload {
     /**
-     * initData field from window.Telegram.WebApp in the client. Needed fot authentication. Its genuinity will be
-     * verified by the server.
-     * @see {@link https://core.telegram.org/bots/webapps#initializing-mini-apps}
-     * @see {@link https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app}
+     * JWT authentication token
      */
-    initData: string;
+    token: string;
+    
+    /**
+     * Room ID to connect to
+     */
+    roomId: string;
 }
 
 /**

@@ -1,37 +1,56 @@
-import {FC, useEffect, useMemo, useState} from "react";
+import { FC, useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Box, IconButton, AppBar, Toolbar, Typography } from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import moveSound from "@/assets/audio/move.wav";
-import {GameStatus} from "@/GameClient/DataModel";
-import {ClientState, GameClient} from "@/GameClient/GameClient";
+import { GameStatus } from "@/GameClient/DataModel";
+import { ClientState, GameClient } from "@/GameClient/GameClient";
+import { useAuth } from "@/Auth/AuthContext";
 
-import {ConnectingPage, ErrorPage, GamePage, WaitingPage} from "./pages";
+import { ConnectingPage, ErrorPage, GamePage, WaitingPage } from "./pages";
 
 const moveSoundPlayer = new Audio(moveSound);
 
 export const GameView: FC = () => {
-    const [clientState, setClientState] = useState<ClientState>();
-
-    const client = useMemo(() => new GameClient(), []);
-
-    const handleAnyUpdate = (state: ClientState) => {
-        setClientState({...state});
-    };
-
-    const handleMove = () => {
-        moveSoundPlayer.play();
-    };
+    const { roomId } = useParams<{ roomId: string }>();
+    const navigate = useNavigate();
+    const { token } = useAuth();
+    const [client, setClient] = useState<GameClient | null>(null);
+    const [clientState, setClientState] = useState<ClientState | null>(null);
 
     useEffect(() => {
-        client.on("anyUpdate", handleAnyUpdate);
-        client.on("move", handleMove);
+        if (!roomId || !token) {
+            navigate('/dashboard');
+            return;
+        }
+
+        const gameClient = new GameClient(token, roomId);
+        setClient(gameClient);
+
+        const handleAnyUpdate = (state: ClientState) => {
+            setClientState({...state});
+        };
+
+        const handleMove = () => {
+            moveSoundPlayer.play();
+        };
+
+        gameClient.on("anyUpdate", handleAnyUpdate);
+        gameClient.on("move", handleMove);
 
         return () => {
-            client.disconnect();
+            gameClient.off("anyUpdate", handleAnyUpdate);
+            gameClient.off("move", handleMove);
+            gameClient.disconnect();
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [roomId, token, navigate]);
 
-    if (!clientState) {
+    const handleBack = () => {
+        navigate('/dashboard');
+    };
+
+    if (!client || !clientState) {
         return <ConnectingPage />;
     }
 
@@ -41,7 +60,27 @@ export const GameView: FC = () => {
     const makingMove = clientState.makingMove;
 
     if (error.isError) {
-        return <ErrorPage />;
+        return (
+            <>
+                <AppBar position="static">
+                    <Toolbar>
+                        <IconButton
+                            edge="start"
+                            color="inherit"
+                            onClick={handleBack}
+                            aria-label="back"
+                            sx={{ mr: 2 }}
+                        >
+                            <ArrowBackIcon />
+                        </IconButton>
+                        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                            Chess Now
+                        </Typography>
+                    </Toolbar>
+                </AppBar>
+                <ErrorPage />
+            </>
+        );
     }
 
     if (!connected || !room) {
@@ -49,8 +88,48 @@ export const GameView: FC = () => {
     }
 
     if (room.gameState.status === GameStatus.NotStarted) {
-        return <WaitingPage room={room} />;
+        return (
+            <>
+                <AppBar position="static">
+                    <Toolbar>
+                        <IconButton
+                            edge="start"
+                            color="inherit"
+                            onClick={handleBack}
+                            aria-label="back"
+                            sx={{ mr: 2 }}
+                        >
+                            <ArrowBackIcon />
+                        </IconButton>
+                        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                            Waiting for Opponent
+                        </Typography>
+                    </Toolbar>
+                </AppBar>
+                <WaitingPage room={room} />
+            </>
+        );
     }
 
-    return <GamePage room={room} makingMove={makingMove} gameClient={client} />;
+    return (
+        <>
+            <AppBar position="static">
+                <Toolbar>
+                    <IconButton
+                        edge="start"
+                        color="inherit"
+                        onClick={handleBack}
+                        aria-label="back"
+                        sx={{ mr: 2 }}
+                    >
+                        <ArrowBackIcon />
+                    </IconButton>
+                    <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                        Game in Progress
+                    </Typography>
+                </Toolbar>
+            </AppBar>
+            <GamePage room={room} makingMove={makingMove} gameClient={client} />
+        </>
+    );
 };
