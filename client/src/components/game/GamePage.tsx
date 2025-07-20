@@ -60,14 +60,11 @@ const GamePage: React.FC<GamePageProps> = ({ room, makingMove, gameClient }) => 
     // If game is finished, ignore clicks
     if (room.gameState.status === GameStatus.Finished) return;
 
-    // If it's not our turn, ignore clicks
-    if (
-      room.me.state.isPlayer &&
-      room.me.state.color !== room.gameState.turn
-    ) return;
-
     // If we're not a player, ignore clicks
     if (!room.me.state.isPlayer) return;
+    
+    // If it's not our turn, ignore clicks
+    if (room.me.state.color !== room.gameState.turn) return;
 
     // If we already have a square selected
     if (selectedSquare) {
@@ -95,7 +92,8 @@ const GamePage: React.FC<GamePageProps> = ({ room, makingMove, gameClient }) => 
       // Check if the square has one of our pieces
       const pieceColor = gameClient.getPieceColor(square as Square);
       
-      if (pieceColor === room.me.state.color) {
+      // Only allow selecting our own pieces and only on our turn
+      if (pieceColor === room.me.state.color && pieceColor === room.gameState.turn) {
         // Select the square and get possible moves
         setSelectedSquare(square as Square);
         setPossibleMoves(gameClient.getPossibleMoves(square as Square));

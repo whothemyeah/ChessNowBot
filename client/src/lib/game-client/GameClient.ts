@@ -110,20 +110,25 @@ export class GameClient extends TypedEventEmitter<GameClientEvents> {
     }
 
     public readonly makeMove = (move: Move): boolean => {
+        // Ensure it's the player's turn and the game is in progress
         if (
             this.chess.turn() !== this._state.room!.me.state.color ||
-            this._state.room!.gameState.status !== GameStatus.InProgress
+            this._state.room!.gameState.status !== GameStatus.InProgress ||
+            !this._state.room!.me.state.isPlayer
         ) {
+            console.error("Cannot make move: not your turn or game not in progress");
             return false;
         }
 
         try {
+            // Validate the move is legal according to chess rules
             this.chess.move(move);
             this._state.makingMove = true;
             this.socket.emit("makeMove", move);
-            this.chess.undo();
+            this.chess.undo(); // Undo the move as the server will apply it
             return true;
         } catch (e) {
+            console.error("Invalid move:", e);
             return false;
         }
     };
@@ -136,6 +141,16 @@ export class GameClient extends TypedEventEmitter<GameClientEvents> {
     };
 
     public getPossibleMoves = (from: Square): PossibleMove[] => {
+        // Only return possible moves if it's the player's turn
+        if (
+            !this._state.room ||
+            this.chess.turn() !== this._state.room.me.state.color ||
+            !this._state.room.me.state.isPlayer ||
+            this._state.room.gameState.status !== GameStatus.InProgress
+        ) {
+            return [];
+        }
+
         const squareToMoveMap: {[key: string]: PossibleMove} = {};
         const moves = this.chess.moves({verbose: true, square: from});
         for (const move of moves) {
