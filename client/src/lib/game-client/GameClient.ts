@@ -169,7 +169,8 @@ export class GameClient extends TypedEventEmitter<GameClientEvents> {
     };
 
     public getPieceColor = (square: Square): Color | undefined => {
-        return this.chess.get(square as ChessJS.Square).color as Color;
+        const piece = this.chess.get(square as ChessJS.Square);
+        return piece ? piece.color as Color : undefined;
     };
 
     public readonly giveUp = (): void => {

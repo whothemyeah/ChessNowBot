@@ -122,87 +122,50 @@ const GamePage: React.FC<GamePageProps> = ({ room, makingMove, gameClient }) => 
     }
   };
 
-  // Custom pieces with highlights for selected square and possible moves
-  const customPieces = () => {
-    const pieces: Record<string, React.ReactNode> = {};
+  // Custom square styles for highlights
+  const getCustomSquareStyles = () => {
+    const styles: Record<string, React.CSSProperties> = {};
     
     // Highlight the selected square
     if (selectedSquare) {
-      pieces[selectedSquare] = (
-        <div
-          style={{
-            position: 'absolute',
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(255, 255, 0, 0.4)',
-            borderRadius: '50%',
-            zIndex: 1,
-          }}
-        />
-      );
+      styles[selectedSquare] = {
+        backgroundColor: 'rgba(255, 255, 0, 0.4)',
+      };
     }
     
     // Highlight possible moves
     possibleMoves.forEach(move => {
-      pieces[move.to] = (
-        <div
-          style={{
-            position: 'absolute',
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(0, 255, 0, 0.3)',
-            borderRadius: '50%',
-            zIndex: 1,
-          }}
-        />
-      );
+      styles[move.to] = {
+        background: 'radial-gradient(circle, rgba(0,0,0,0.1) 25%, transparent 25%)',
+        cursor: 'pointer',
+      };
     });
     
     // Highlight the last move
     if (room.gameState.lastMove) {
       const { from, to } = room.gameState.lastMove;
-      pieces[from] = (
-        <div
-          style={{
-            position: 'absolute',
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(173, 216, 230, 0.5)',
-            zIndex: 1,
-          }}
-        />
-      );
-      pieces[to] = (
-        <div
-          style={{
-            position: 'absolute',
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(173, 216, 230, 0.5)',
-            zIndex: 1,
-          }}
-        />
-      );
+      styles[from] = {
+        backgroundColor: 'rgba(173, 216, 230, 0.5)',
+      };
+      styles[to] = {
+        backgroundColor: 'rgba(173, 216, 230, 0.5)',
+      };
     }
     
     // Highlight check
     const checkSquare = gameClient.getCheck();
     if (checkSquare) {
-      pieces[checkSquare] = (
-        <div
-          style={{
-            position: 'absolute',
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(255, 0, 0, 0.4)',
-            borderRadius: '50%',
-            zIndex: 1,
-          }}
-        />
-      );
+      styles[checkSquare] = {
+        backgroundColor: 'rgba(255, 0, 0, 0.4)',
+      };
     }
     
-    return pieces;
+    return styles;
+  };
+  
+  // Custom pieces with highlights
+  const customPieces = () => {
+    return {}; // We'll use customSquareStyles instead for highlighting
   };
 
   return (
@@ -224,8 +187,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, makingMove, gameClient }) => 
             borderRadius: '4px',
             boxShadow: '0 5px 15px rgba(0, 0, 0, 0.5)',
           }}
-          customSquareStyles={{}}
-          customPieces={customPieces()}
+          customSquareStyles={getCustomSquareStyles()}
           boardOrientation={boardOrientation}
         />
       </Box>
