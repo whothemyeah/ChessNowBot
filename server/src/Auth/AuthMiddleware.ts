@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import { Socket } from 'socket.io';
 import { authController, AuthError } from '@/Auth/AuthController';
 import { UserProfile } from '@/GameServer/Database';
 
@@ -33,25 +32,7 @@ export const authenticateRequest = async (req: Request, res: Response, next: Nex
     }
 };
 
-/**
- * Socket.io middleware to authenticate socket connections
- */
-export const authenticateSocket = (socket: Socket, next: (err?: Error) => void) => {
-    try {
-        const token = socket.handshake.auth.token;
-        if (!token) {
-            return next(new AuthError('Authentication token required'));
-        }
-
-        const payload = authController.verifyToken(token);
-        
-        // Store user ID in socket for later use
-        socket.data.userId = payload.userId;
-        next();
-    } catch (error) {
-        next(error instanceof AuthError ? error : new Error('Authentication failed'));
-    }
-};
+// Socket.io authentication is now handled directly in the GameServer.handleConnection method
 
 // Extend Express Request interface to include user
 declare global {

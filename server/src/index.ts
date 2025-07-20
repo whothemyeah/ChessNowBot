@@ -12,6 +12,8 @@ import path from "path";
 
 import {GameServer} from "@/GameServer/GameServer";
 import authRoutes from "@/Auth/AuthRoutes";
+import roomRoutes from "@/GameServer/RoomRoutes";
+import { setGameServerInstance } from "@/GameServer/RoomRoutes";
 
 // Create Express app
 const app = express();
@@ -23,6 +25,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/rooms', roomRoutes);
 
 // Serve static files
 if (config.get<boolean>("server.static")) {
@@ -57,8 +60,11 @@ if (config.get<boolean>("server.https")) {
 // Initialize game server
 const gameServer = new GameServer(server);
 
+// Set the game server instance for the room routes
+setGameServerInstance(gameServer);
+
 // Start server
-const port = config.get<number>("server.port");
-server.listen(port, () => {
+const port = process.env.PORT ? parseInt(process.env.PORT) : config.get<number>("server.port");
+server.listen(port, '0.0.0.0', () => {
     console.log(`Server running on port ${port}`);
 });
