@@ -8,9 +8,17 @@ interface PlayerBarProps {
   player?: Member;
   isMyTurn: boolean;
   timer?: number;
+  isConnected?: boolean;
+  disconnectionTime?: number; // Time in seconds until forfeit
 }
 
-const PlayerBar: React.FC<PlayerBarProps> = ({ player, isMyTurn, timer }) => {
+const PlayerBar: React.FC<PlayerBarProps> = ({ 
+  player, 
+  isMyTurn, 
+  timer, 
+  isConnected = true, 
+  disconnectionTime 
+}) => {
   // Format timer as mm:ss
   const formatTime = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000);
@@ -38,16 +46,25 @@ const PlayerBar: React.FC<PlayerBarProps> = ({ player, isMyTurn, timer }) => {
         <Avatar 
           src={player?.user.avatarURL} 
           alt={player?.user.fullName || 'Player'}
-          sx={{ width: 40, height: 40, mr: 2 }}
+          sx={{ 
+            width: 40, 
+            height: 40, 
+            mr: 2,
+            opacity: isConnected ? 1 : 0.5,
+            border: isConnected ? 'none' : '2px solid red'
+          }}
         >
           {player?.user.fullName ? player.user.fullName[0] : '?'}
         </Avatar>
         <Box>
           <Typography variant="subtitle1">
             {player?.user.fullName || 'Waiting for player...'}
+            {!isConnected && ' (Disconnected)'}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {player?.user.username ? `@${player.user.username}` : ''}
+          <Typography variant="caption" color={isConnected ? "text.secondary" : "error"}>
+            {isConnected 
+              ? (player?.user.username ? `@${player.user.username}` : '') 
+              : `Reconnect time: ${disconnectionTime || 60}s`}
           </Typography>
         </Box>
       </Box>

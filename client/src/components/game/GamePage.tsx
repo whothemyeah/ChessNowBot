@@ -26,6 +26,22 @@ const GamePage: React.FC<GamePageProps> = ({ room, makingMove, gameClient }) => 
     height: typeof window !== 'undefined' ? window.innerHeight : 0,
   });
 
+  // Add beforeunload event to warn users when they try to leave the game
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      const message = 'Leaving this page will disconnect you from the game. If you don\'t reconnect within the time limit, you will lose the game.';
+      e.preventDefault();
+      e.returnValue = message;
+      return message;
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
   // Set board orientation based on player color
   useEffect(() => {
     if (room.me.state.isPlayer && room.me.state.color) {
@@ -174,6 +190,10 @@ const GamePage: React.FC<GamePageProps> = ({ room, makingMove, gameClient }) => 
         player={boardOrientation === 'white' ? room.blackPlayer : room.whitePlayer}
         isMyTurn={room.gameState.turn === (boardOrientation === 'white' ? Color.Black : Color.White)}
         timer={room.gameState.timer ? (boardOrientation === 'white' ? room.gameState.timer.blackTimeLeft : room.gameState.timer.whiteTimeLeft) : undefined}
+        isConnected={boardOrientation === 'white' 
+          ? (room.blackPlayer?.state.connected ?? true) 
+          : (room.whitePlayer?.state.connected ?? true)}
+        disconnectionTime={60} // Default 60 seconds, should be configurable from server
       />
       
       {/* Chessboard */}
@@ -198,6 +218,10 @@ const GamePage: React.FC<GamePageProps> = ({ room, makingMove, gameClient }) => 
         player={boardOrientation === 'white' ? room.whitePlayer : room.blackPlayer}
         isMyTurn={room.gameState.turn === (boardOrientation === 'white' ? Color.White : Color.Black)}
         timer={room.gameState.timer ? (boardOrientation === 'white' ? room.gameState.timer.whiteTimeLeft : room.gameState.timer.blackTimeLeft) : undefined}
+        isConnected={boardOrientation === 'white' 
+          ? (room.whitePlayer?.state.connected ?? true) 
+          : (room.blackPlayer?.state.connected ?? true)}
+        disconnectionTime={60} // Default 60 seconds, should be configurable from server
       />
       
       {/* Game controls */}

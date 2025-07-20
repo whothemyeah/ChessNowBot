@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/auth-context';
 import { Color } from '@/lib/game-client/DataModel';
+import GamesList, { GameSummary } from '@/components/dashboard/GamesList';
+import { fetchUserGames, fetchGameModes } from '@/lib/api/game-service';
 
 const API_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000';
 
@@ -13,19 +15,53 @@ export default function DashboardPage() {
   const [roomId, setRoomId] = useState('');
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ongoingGames, setOngoingGames] = useState<GameSummary[]>([]);
+  const [endedGames, setEndedGames] = useState<GameSummary[]>([]);
+  const [gameModes, setGameModes] = useState<Record<string, any>>({});
+  const [selectedGameMode, setSelectedGameMode] = useState<string>('custom');
   const [gameSettings, setGameSettings] = useState({
     preferredColor: 'random',
-    timer: false,
+    timer: true, // Timer is now enabled by default
     initialTime: 5,
     timerIncrement: 0,
   });
 
   // Redirect to login if not authenticated
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isAuthenticated && !user) {
       router.push('/login');
     }
   }, [isAuthenticated, user, router]);
+  
+  // Fetch user's games
+  useEffect(() => {
+    if (token) {
+      fetchUserGames(token).then(({ ongoing, ended }) => {
+        setOngoingGames(ongoing);
+        setEndedGames(ended);
+      });
+    }
+  }, [token]);
+  
+  // Fetch game modes
+  useEffect(() => {
+    fetchGameModes().then(modes => {
+      setGameModes(modes);
+    });
+  }, []);
+  
+  // Update game settings when game mode changes
+  useEffect(() => {
+    if (selectedGameMode !== 'custom' && gameModes[selectedGameMode]) {
+      const modeSettings = gameModes[selectedGameMode].gameRules;
+      setGameSettings({
+        preferredColor: 'random',
+        timer: modeSettings.timer,
+        initialTime: modeSettings.initialTime / 60, // Convert seconds to minutes
+        timerIncrement: modeSettings.timerIncrement || 0,
+      });
+    }
+  }, [selectedGameMode, gameModes]);
 
   const handleCreateRoom = async () => {
     if (!token) return;
@@ -34,6 +70,27 @@ export default function DashboardPage() {
     setError(null);
     
     try {
+      // Use selected game mode settings or custom settings
+      let gameRules;
+      
+      if (selectedGameMode !== 'custom' && gameModes[selectedGameMode]) {
+        gameRules = { ...gameModes[selectedGameMode].gameRules };
+        
+        // Add preferred color if selected
+        if (gameSettings.preferredColor !== 'random') {
+          gameRules.hostPreferredColor = gameSettings.preferredColor === 'white' ? Color.White : Color.Black;
+        }
+      } else {
+        gameRules = {
+          hostPreferredColor: gameSettings.preferredColor === 'random' 
+            ? undefined 
+            : (gameSettings.preferredColor === 'white' ? Color.White : Color.Black),
+          timer: gameSettings.timer,
+          initialTime: gameSettings.timer ? gameSettings.initialTime * 60 : undefined,
+          timerIncrement: gameSettings.timer ? gameSettings.timerIncrement : undefined,
+        };
+      }
+      
       const response = await fetch(`${API_URL}/api/rooms`, {
         method: 'POST',
         headers: {
@@ -41,14 +98,8 @@ export default function DashboardPage() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          gameRules: {
-            hostPreferredColor: gameSettings.preferredColor === 'random' 
-              ? undefined 
-              : (gameSettings.preferredColor === 'white' ? Color.White : Color.Black),
-            timer: gameSettings.timer,
-            initialTime: gameSettings.timer ? gameSettings.initialTime * 60 : undefined,
-            timerIncrement: gameSettings.timer ? gameSettings.timerIncrement : undefined,
-          },
+          gameRules,
+          gameMode: selectedGameMode !== 'custom' ? selectedGameMode : undefined,
         }),
       });
       
@@ -127,6 +178,25 @@ export default function DashboardPage() {
                 )}
                 
                 <div className="space-y-4">
+                  {/* Game Mode Selection */}
+                  <div>
+                    <label htmlFor="gameMode" className="block text-sm font-medium text-gray-700">
+                      Game Mode
+                    </label>
+                    <select
+                      id="gameMode"
+                      name="gameMode"
+                      value={selectedGameMode}
+                      onChange={(e) => setSelectedGameMode(e.target.value)}
+                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                    >
+                      <option value="custom">Custom Game</option>
+                      {Object.entries(gameModes).map(([key, mode]) => (
+                        <option key={key} value={key}>{mode.title}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
                   <div>
                     <label htmlFor="preferredColor" className="block text-sm font-medium text-gray-700">
                       Preferred Color
@@ -144,54 +214,74 @@ export default function DashboardPage() {
                     </select>
                   </div>
                   
-                  <div className="flex items-center">
-                    <input
-                      id="timer"
-                      name="timer"
-                      type="checkbox"
-                      checked={gameSettings.timer}
-                      onChange={handleSettingChange}
-                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                    />
-                    <label htmlFor="timer" className="ml-2 block text-sm text-gray-900">
-                      Enable Timer
-                    </label>
-                  </div>
-                  
-                  {gameSettings.timer && (
+                  {/* Only show timer settings for custom games */}
+                  {selectedGameMode === 'custom' && (
                     <>
-                      <div>
-                        <label htmlFor="initialTime" className="block text-sm font-medium text-gray-700">
-                          Initial Time (minutes)
-                        </label>
+                      <div className="flex items-center">
                         <input
-                          type="number"
-                          name="initialTime"
-                          id="initialTime"
-                          min="1"
-                          max="60"
-                          value={gameSettings.initialTime}
+                          id="timer"
+                          name="timer"
+                          type="checkbox"
+                          checked={gameSettings.timer}
                           onChange={handleSettingChange}
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                          disabled={selectedGameMode !== 'custom'}
                         />
+                        <label htmlFor="timer" className="ml-2 block text-sm text-gray-900">
+                          Enable Timer
+                        </label>
                       </div>
                       
-                      <div>
-                        <label htmlFor="timerIncrement" className="block text-sm font-medium text-gray-700">
-                          Increment (seconds)
-                        </label>
-                        <input
-                          type="number"
-                          name="timerIncrement"
-                          id="timerIncrement"
-                          min="0"
-                          max="60"
-                          value={gameSettings.timerIncrement}
-                          onChange={handleSettingChange}
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                        />
-                      </div>
+                      {gameSettings.timer && (
+                        <>
+                          <div>
+                            <label htmlFor="initialTime" className="block text-sm font-medium text-gray-700">
+                              Initial Time (minutes)
+                            </label>
+                            <input
+                              type="number"
+                              name="initialTime"
+                              id="initialTime"
+                              min="1"
+                              max="60"
+                              value={gameSettings.initialTime}
+                              onChange={handleSettingChange}
+                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                              disabled={selectedGameMode !== 'custom'}
+                            />
+                          </div>
+                          
+                          <div>
+                            <label htmlFor="timerIncrement" className="block text-sm font-medium text-gray-700">
+                              Increment (seconds)
+                            </label>
+                            <input
+                              type="number"
+                              name="timerIncrement"
+                              id="timerIncrement"
+                              min="0"
+                              max="60"
+                              value={gameSettings.timerIncrement}
+                              onChange={handleSettingChange}
+                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                              disabled={selectedGameMode !== 'custom'}
+                            />
+                          </div>
+                        </>
+                      )}
                     </>
+                  )}
+                  
+                  {/* Show selected game mode settings */}
+                  {selectedGameMode !== 'custom' && gameModes[selectedGameMode] && (
+                    <div className="bg-gray-50 p-3 rounded-md">
+                      <p className="text-sm font-medium text-gray-700">Game Settings:</p>
+                      <p className="text-sm text-gray-600">
+                        Time: {gameModes[selectedGameMode].gameRules.initialTime / 60} min
+                        {gameModes[selectedGameMode].gameRules.timerIncrement > 0 && 
+                          ` + ${gameModes[selectedGameMode].gameRules.timerIncrement}s increment`}
+                      </p>
+                    </div>
                   )}
                   
                   <button
@@ -238,6 +328,9 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+          
+          {/* Games List */}
+          <GamesList ongoingGames={ongoingGames} endedGames={endedGames} />
         </div>
       </main>
     </div>
