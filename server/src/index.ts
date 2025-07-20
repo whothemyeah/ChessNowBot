@@ -10,10 +10,12 @@ import cors from "cors";
 import serveStatic from "serve-static";
 import path from "path";
 
-import {GameServer} from "@/GameServer/GameServer";
-import authRoutes from "@/Auth/AuthRoutes";
+import { GameServer } from "@/GameServer/GameServer";
+import authRoutes from "@/routes/authRoutes";
+import gameRoutes from "@/routes/gameRoutes";
 import roomRoutes from "@/GameServer/RoomRoutes";
 import { setGameServerInstance } from "@/GameServer/RoomRoutes";
+import { prisma } from "@/lib/prisma";
 
 // Create Express app
 const app = express();
@@ -25,6 +27,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/games', gameRoutes);
 app.use('/api/rooms', roomRoutes);
 
 // Serve static files
@@ -63,8 +66,36 @@ const gameServer = new GameServer(server);
 // Set the game server instance for the room routes
 setGameServerInstance(gameServer);
 
-// Start server
-const port = process.env.PORT ? parseInt(process.env.PORT) : config.get<number>("server.port");
-server.listen(port, '0.0.0.0', () => {
-    console.log(`Server running on port ${port}`);
+// Connect to the database and start server
+async function startServer() {
+    try {
+        // Connect to the database
+        await prisma.$connect();
+        console.log('Connected to the database');
+
+        // Start server
+        const port = process.env.PORT ? parseInt(process.env.PORT) : config.get<number>("server.port");
+        server.listen(port, '0.0.0.0', () => {
+            console.log(`Server running on port ${port}`);
+        });
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
+}
+
+// Handle graceful shutdown
+process.on('SIGINT', async () => {
+    console.log('Shutting down server...');
+    await prisma.$disconnect();
+    process.exit(0);
 });
+
+process.on('SIGTERM', async () => {
+    console.log('Shutting down server...');
+    await prisma.$disconnect();
+    process.exit(0);
+});
+
+// Start the server
+startServer();

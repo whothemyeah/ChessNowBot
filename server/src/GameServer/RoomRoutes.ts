@@ -40,19 +40,10 @@ router.post('/', authenticateRequest, async (req, res) => {
         };
 
         // Get user from request (set by authenticateRequest middleware)
-        const user = req.user!.get({ plain: true });
+        const user = req.user!;
         
         // Create a new room
-        const room = gameServerInstance.createRoom(
-            {
-                id: user.id,
-                email: user.email,
-                fullName: user.fullName,
-                username: user.username || undefined,
-                avatarURL: user.avatarURL || undefined,
-            },
-            validatedGameRules
-        );
+        const room = gameServerInstance.createRoom(validatedGameRules);
 
         // Return the room ID
         res.status(201).json({ roomId: room.id });

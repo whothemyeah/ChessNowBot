@@ -1,244 +1,212 @@
-import {
-    Association,
-    BelongsToCreateAssociationMixin,
-    BelongsToGetAssociationMixin,
-    BelongsToSetAssociationMixin,
-    CreationOptional,
-    DataTypes,
-    ForeignKey,
-    HasManyAddAssociationMixin,
-    HasManyAddAssociationsMixin,
-    HasManyCountAssociationsMixin,
-    HasManyCreateAssociationMixin,
-    HasManyGetAssociationsMixin,
-    HasManyHasAssociationMixin,
-    HasManyHasAssociationsMixin,
-    HasManyRemoveAssociationMixin,
-    HasManyRemoveAssociationsMixin,
-    HasManySetAssociationsMixin,
-    InferAttributes,
-    InferCreationAttributes,
-    Model,
-    Sequelize,
-} from "sequelize";
+import { prisma } from '@/lib/prisma';
+import { Color, GameResolution } from '@/GameServer/DataModel.js';
 
-import {Color, GameResolution} from "@/GameServer/DataModel.js";
+// Export the prisma client for use in other modules
+export { prisma };
 
-const sequelize = new Sequelize({
-    dialect: "sqlite",
-    storage: "db.sqlite",
-    logging: false,
-    define: {
-        freezeTableName: true,
-    },
-});
-
-export class UserProfile extends Model<InferAttributes<UserProfile>, InferCreationAttributes<UserProfile>> {
-    declare id: CreationOptional<number>;
-    declare email: string;
-    declare password: string;
-    declare fullName: string;
-    declare username: string | null;
-    declare verified: boolean;
-    declare avatarURL: string | null;
-    declare lastLogin: Date | null;
-
-    declare createdAt: CreationOptional<Date>;
-    declare updatedAt: CreationOptional<Date>;
-
-    declare getWhiteGames: HasManyGetAssociationsMixin<PlayedGame>;
-    declare addWhiteGame: HasManyAddAssociationMixin<PlayedGame, string>;
-    declare addWhiteGames: HasManyAddAssociationsMixin<PlayedGame, string>;
-    declare setWhiteGames: HasManySetAssociationsMixin<PlayedGame, string>;
-    declare removeWhiteGame: HasManyRemoveAssociationMixin<PlayedGame, string>;
-    declare removeWhiteGames: HasManyRemoveAssociationsMixin<PlayedGame, string>;
-    declare hasWhiteGame: HasManyHasAssociationMixin<PlayedGame, string>;
-    declare hasWhiteGames: HasManyHasAssociationsMixin<PlayedGame, string>;
-    declare countWhiteGames: HasManyCountAssociationsMixin;
-    declare createWhiteGame: HasManyCreateAssociationMixin<PlayedGame, "whitePlayerID">;
-
-    declare getBlackGames: HasManyGetAssociationsMixin<PlayedGame>;
-    declare addBlackGame: HasManyAddAssociationMixin<PlayedGame, string>;
-    declare addBlackGames: HasManyAddAssociationsMixin<PlayedGame, string>;
-    declare setBlackGames: HasManySetAssociationsMixin<PlayedGame, string>;
-    declare removeBlackGame: HasManyRemoveAssociationMixin<PlayedGame, string>;
-    declare removeBlackGames: HasManyRemoveAssociationsMixin<PlayedGame, string>;
-    declare hasBlackGame: HasManyHasAssociationMixin<PlayedGame, string>;
-    declare hasBlackGames: HasManyHasAssociationsMixin<PlayedGame, string>;
-    declare countBlackGames: HasManyCountAssociationsMixin;
-    declare createBlackGame: HasManyCreateAssociationMixin<PlayedGame, "blackPlayerID">;
-
-    declare static associations: {
-        whiteGames: Association<UserProfile, PlayedGame>;
-        blackGames: Association<UserProfile, PlayedGame>;
-    };
+// Type definitions for game-related operations
+export interface CreateGameParams {
+    id: string;
+    timerEnabled: boolean;
+    timerInit: number;
+    timerIncrement: number;
+    pgn: string;
+    resolution: GameResolution;
+    winner: Color | null;
+    whitePlayerID: number;
+    blackPlayerID: number;
+    gameMode?: string;
 }
 
-UserProfile.init(
-    {
-        id: {
-            type: DataTypes.INTEGER,
-            primaryKey: true,
-            autoIncrement: true,
-        },
-        email: {
-            type: DataTypes.STRING,
-            allowNull: false,
-            unique: true,
-            validate: {
-                isEmail: true,
-            },
-        },
-        password: {
-            type: DataTypes.STRING,
-            allowNull: false,
-        },
-        fullName: {
-            type: DataTypes.STRING,
-            allowNull: false,
-        },
-        username: {
-            type: DataTypes.STRING,
-            defaultValue: null,
-            unique: true,
-        },
-        verified: {
-            type: DataTypes.BOOLEAN,
-            defaultValue: false,
-        },
-        avatarURL: {
-            type: DataTypes.STRING,
-            defaultValue: null,
-        },
-        lastLogin: {
-            type: DataTypes.DATE,
-            defaultValue: null,
-        },
-        createdAt: DataTypes.DATE,
-        updatedAt: DataTypes.DATE,
-    },
-    {sequelize}
-);
-
-export class PlayedGame extends Model<InferAttributes<PlayedGame>, InferCreationAttributes<PlayedGame>> {
-    declare id: string;
-    declare timerEnabled: boolean;
-    declare timerInit: number;
-    declare timerIncrement: number;
-    declare pgn: string;
-    declare resolution: GameResolution;
-    declare winner: Color | null;
-
-    declare createdAt: CreationOptional<Date>;
-
-    declare whitePlayerID: ForeignKey<UserProfile["id"]>;
-    declare blackPlayerID: ForeignKey<UserProfile["id"]>;
-
-    declare getWhitePlayer: BelongsToGetAssociationMixin<UserProfile>;
-    declare setWhitePlayer: BelongsToSetAssociationMixin<UserProfile, number>;
-    declare createWhitePlayer: BelongsToCreateAssociationMixin<UserProfile>;
-
-    declare getBlackPlayer: BelongsToGetAssociationMixin<UserProfile>;
-    declare setBlackPlayer: BelongsToSetAssociationMixin<UserProfile, number>;
-    declare createBlackPlayer: BelongsToCreateAssociationMixin<UserProfile>;
-
-    declare static associations: {
-        whitePlayer: Association<PlayedGame, UserProfile>;
-        blackPlayer: Association<PlayedGame, UserProfile>;
-    };
+export interface UpdateGameParams {
+    id: string;
+    pgn?: string;
+    resolution?: GameResolution;
+    winner?: Color | null;
 }
 
-PlayedGame.init(
-    {
-        id: {
-            type: DataTypes.STRING,
-            primaryKey: true,
-            allowNull: false,
-        },
-        timerEnabled: {
-            type: DataTypes.BOOLEAN,
-            allowNull: false,
-        },
-        timerInit: {
-            type: DataTypes.NUMBER,
-            allowNull: false,
-        },
-        timerIncrement: {
-            type: DataTypes.NUMBER,
-            allowNull: false,
-        },
-        pgn: {
-            type: DataTypes.STRING,
-            allowNull: false,
-        },
-        resolution: {
-            type: DataTypes.STRING,
-            allowNull: false,
-        },
-        winner: {
-            type: DataTypes.STRING,
-            allowNull: true,
-        },
-        createdAt: DataTypes.DATE,
-    },
-    {
-        sequelize,
-        updatedAt: false,
-        indexes: [
-            {
-                unique: false,
-                fields: ["winner"],
+// Game operations
+export const GameOperations = {
+    /**
+     * Create a new game
+     */
+    createGame: async (params: CreateGameParams) => {
+        return prisma.playedGame.create({
+            data: {
+                id: params.id,
+                timerEnabled: params.timerEnabled,
+                timerInit: params.timerInit,
+                timerIncrement: params.timerIncrement,
+                pgn: params.pgn,
+                resolution: params.resolution,
+                winner: params.winner,
+                whitePlayerID: params.whitePlayerID,
+                blackPlayerID: params.blackPlayerID,
+                gameMode: params.gameMode,
             },
-            {
-                unique: false,
-                fields: ["whitePlayerID"],
+            include: {
+                whitePlayer: true,
+                blackPlayer: true,
             },
-            {
-                unique: false,
-                fields: ["blackPlayerID"],
+        });
+    },
+
+    /**
+     * Get a game by ID
+     */
+    getGameById: async (id: string) => {
+        return prisma.playedGame.findUnique({
+            where: { id },
+            include: {
+                whitePlayer: true,
+                blackPlayer: true,
             },
-        ],
-    }
-);
+        });
+    },
 
-UserProfile.hasMany(PlayedGame, {
-    as: "whiteGames",
-    foreignKey: {
-        name: "whitePlayerID",
-        allowNull: false,
+    /**
+     * Update a game
+     */
+    updateGame: async (params: UpdateGameParams) => {
+        const updateData: any = {};
+        
+        if (params.pgn !== undefined) updateData.pgn = params.pgn;
+        if (params.resolution !== undefined) updateData.resolution = params.resolution;
+        if (params.winner !== undefined) updateData.winner = params.winner;
+        
+        return prisma.playedGame.update({
+            where: { id: params.id },
+            data: updateData,
+            include: {
+                whitePlayer: true,
+                blackPlayer: true,
+            },
+        });
     },
-    onDelete: "RESTRICT",
-    onUpdate: "RESTRICT",
-});
-PlayedGame.belongsTo(UserProfile, {
-    as: "whitePlayer",
-    foreignKey: {
-        name: "whitePlayerID",
-        allowNull: false,
-    },
-    onDelete: "RESTRICT",
-    onUpdate: "RESTRICT",
-});
 
-UserProfile.hasMany(PlayedGame, {
-    as: "blackGames",
-    foreignKey: {
-        name: "blackPlayerID",
-        allowNull: false,
+    /**
+     * Get games by player ID
+     */
+    getGamesByPlayerId: async (playerId: number) => {
+        return prisma.playedGame.findMany({
+            where: {
+                OR: [
+                    { whitePlayerID: playerId },
+                    { blackPlayerID: playerId },
+                ],
+            },
+            include: {
+                whitePlayer: true,
+                blackPlayer: true,
+            },
+            orderBy: {
+                createdAt: 'desc',
+            },
+        });
     },
-    onDelete: "RESTRICT",
-    onUpdate: "RESTRICT",
-});
-PlayedGame.belongsTo(UserProfile, {
-    as: "blackPlayer",
-    foreignKey: {
-        name: "blackPlayerID",
-        allowNull: false,
-    },
-    onDelete: "RESTRICT",
-    onUpdate: "RESTRICT",
-});
 
-(async () => {
-    await sequelize.sync();
-})();
+    /**
+     * Get active games by player ID
+     */
+    getActiveGamesByPlayerId: async (playerId: number) => {
+        return prisma.playedGame.findMany({
+            where: {
+                OR: [
+                    { whitePlayerID: playerId },
+                    { blackPlayerID: playerId },
+                ],
+                resolution: 'in-progress',
+            },
+            include: {
+                whitePlayer: true,
+                blackPlayer: true,
+            },
+        });
+    },
+};
+
+// User operations
+export const UserOperations = {
+    /**
+     * Get a user by ID
+     */
+    getUserById: async (id: number) => {
+        return prisma.userProfile.findUnique({
+            where: { id },
+        });
+    },
+
+    /**
+     * Get a user by email
+     */
+    getUserByEmail: async (email: string) => {
+        return prisma.userProfile.findUnique({
+            where: { email },
+        });
+    },
+
+    /**
+     * Get a user by username
+     */
+    getUserByUsername: async (username: string) => {
+        return prisma.userProfile.findUnique({
+            where: { username },
+        });
+    },
+
+    /**
+     * Update a user
+     */
+    updateUser: async (id: number, data: any) => {
+        return prisma.userProfile.update({
+            where: { id },
+            data,
+        });
+    },
+
+    /**
+     * Get user statistics
+     */
+    getUserStats: async (userId: number) => {
+        // Get all games for the user
+        const games = await prisma.playedGame.findMany({
+            where: {
+                OR: [
+                    { whitePlayerID: userId },
+                    { blackPlayerID: userId },
+                ],
+                NOT: {
+                    resolution: 'in-progress',
+                },
+            },
+        });
+
+        // Calculate statistics
+        let wins = 0;
+        let losses = 0;
+        let draws = 0;
+
+        games.forEach(game => {
+            if (!game.winner) {
+                // Draw
+                draws++;
+            } else if (
+                (game.winner === 'white' && game.whitePlayerID === userId) ||
+                (game.winner === 'black' && game.blackPlayerID === userId)
+            ) {
+                // Win
+                wins++;
+            } else {
+                // Loss
+                losses++;
+            }
+        });
+
+        return {
+            totalGames: games.length,
+            wins,
+            losses,
+            draws,
+        };
+    },
+};

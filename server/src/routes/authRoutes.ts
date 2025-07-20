@@ -1,14 +1,10 @@
 import express from 'express';
-import { authController, UserExistsError, InvalidCredentialsError } from '@/Auth/AuthController';
-import { authenticateRequest } from '@/Auth/AuthMiddleware';
+import { authController, InvalidCredentialsError, UserExistsError } from '@/Auth/PrismaAuthController';
+import { authenticateRequest } from '@/Auth/PrismaAuthMiddleware';
 
 const router = express.Router();
 
-/**
- * @route POST /api/auth/register
- * @desc Register a new user
- * @access Public
- */
+// Register a new user
 router.post('/register', async (req, res) => {
     try {
         const { email, password, fullName, username } = req.body;
@@ -37,11 +33,7 @@ router.post('/register', async (req, res) => {
     }
 });
 
-/**
- * @route POST /api/auth/login
- * @desc Login a user
- * @access Public
- */
+// Login a user
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -70,11 +62,7 @@ router.post('/login', async (req, res) => {
     }
 });
 
-/**
- * @route GET /api/auth/me
- * @desc Get current user
- * @access Private
- */
+// Get current user profile (requires authentication)
 router.get('/me', authenticateRequest, (req, res) => {
     // User is already attached to req by the authenticateRequest middleware
     const { password: _, ...userData } = req.user!;

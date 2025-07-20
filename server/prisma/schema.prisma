@@ -1,0 +1,62 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User profile model
+model UserProfile {
+  id        Int         @id @default(autoincrement())
+  email     String      @unique
+  password  String
+  fullName  String
+  username  String?     @unique
+  verified  Boolean     @default(false)
+  avatarURL String?
+  lastLogin DateTime?
+
+  // Games where user plays as white
+  whiteGames PlayedGame[] @relation("WhitePlayer")
+  
+  // Games where user plays as black
+  blackGames PlayedGame[] @relation("BlackPlayer")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Played game model
+model PlayedGame {
+  id             String   @id
+  timerEnabled   Boolean
+  timerInit      Int
+  timerIncrement Int
+  pgn            String
+  resolution     String
+  winner         String?
+  gameMode       String?
+  
+  // Timestamps
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  // Foreign keys
+  whitePlayerID  Int
+  blackPlayerID  Int
+  
+  // Relations
+  whitePlayer    UserProfile @relation("WhitePlayer", fields: [whitePlayerID], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  blackPlayer    UserProfile @relation("BlackPlayer", fields: [blackPlayerID], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  // Indexes
+  @@index([winner])
+  @@index([whitePlayerID])
+  @@index([blackPlayerID])
+}

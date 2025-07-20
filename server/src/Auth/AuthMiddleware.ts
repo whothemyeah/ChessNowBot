@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { authController, AuthError } from '@/Auth/AuthController';
-import { UserProfile } from '@/GameServer/Database';
+import { authController, AuthError } from '@/Auth/PrismaAuthController';
+import { prisma } from '@/lib/prisma';
+import { UserProfile } from '@/generated/prisma';
 
 /**
  * Express middleware to authenticate requests
@@ -16,13 +17,16 @@ export const authenticateRequest = async (req: Request, res: Response, next: Nex
         const payload = authController.verifyToken(token);
 
         // Get user from database
-        const user = await UserProfile.findByPk(payload.userId);
+        const user = await prisma.userProfile.findUnique({
+            where: { id: payload.userId }
+        });
+        
         if (!user) {
             return res.status(401).json({ error: 'User not found' });
         }
 
         // Attach user to request
-        req.user = user;
+        req.user = user as any;
         next();
     } catch (error) {
         if (error instanceof AuthError) {
@@ -31,8 +35,6 @@ export const authenticateRequest = async (req: Request, res: Response, next: Nex
         next(error);
     }
 };
-
-// Socket.io authentication is now handled directly in the GameServer.handleConnection method
 
 // Extend Express Request interface to include user
 declare global {
