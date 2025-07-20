@@ -141,17 +141,6 @@ const GamePage: React.FC<GamePageProps> = ({ room, makingMove, gameClient }) => 
       };
     });
     
-    // Highlight the last move
-    if (room.gameState.lastMove) {
-      const { from, to } = room.gameState.lastMove;
-      styles[from] = {
-        backgroundColor: 'rgba(173, 216, 230, 0.5)',
-      };
-      styles[to] = {
-        backgroundColor: 'rgba(173, 216, 230, 0.5)',
-      };
-    }
-    
     // Highlight check
     const checkSquare = gameClient.getCheck();
     if (checkSquare) {
@@ -189,6 +178,8 @@ const GamePage: React.FC<GamePageProps> = ({ room, makingMove, gameClient }) => 
           }}
           customSquareStyles={getCustomSquareStyles()}
           boardOrientation={boardOrientation}
+          areArrowsAllowed={false}
+          isDraggablePiece={() => false} // Disable dragging pieces
         />
       </Box>
       
