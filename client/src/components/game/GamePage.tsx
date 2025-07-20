@@ -187,6 +187,8 @@ const GamePage: React.FC<GamePageProps> = ({ room, makingMove, gameClient }) => 
           }}
           customSquareStyles={getCustomSquareStyles()}
           boardOrientation={boardOrientation}
+          areArrowsAllowed={false}
+          isDraggablePiece={() => false} // Disable drag and drop completely
         />
       </Box>
       
