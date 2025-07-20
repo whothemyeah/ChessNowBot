@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppBar, Box, IconButton, Toolbar, Typography } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -15,7 +15,12 @@ import ErrorPage from "@/components/game/ErrorPage";
 import WaitingPage from "@/components/game/WaitingPage";
 import GamePage from "@/components/game/GamePage";
 
-export default function GameRoom({ params }: { params: { roomId: string } }) {
+export default function GameRoom({
+  params,
+}: {
+  params: Promise<{ roomId: string }>;
+}) {
+  const { roomId } = use(params);
   const router = useRouter();
   const { token } = useAuth();
   const [client, setClient] = useState<GameClient | null>(null);
@@ -24,7 +29,7 @@ export default function GameRoom({ params }: { params: { roomId: string } }) {
 
   useEffect(() => {
     // Create audio element
-    const audio = new Audio('/audio/move.wav');
+    const audio = new Audio("/audio/move.wav");
     setMoveSound(audio);
 
     return () => {
@@ -37,21 +42,23 @@ export default function GameRoom({ params }: { params: { roomId: string } }) {
   }, []);
 
   useEffect(() => {
-    if (!params.roomId || !token) {
-      router.push('/dashboard');
+    if (!roomId || !token) {
+      router.push("/dashboard");
       return;
     }
 
-    const gameClient = new GameClient(token, params.roomId);
+    const gameClient = new GameClient(token, roomId);
     setClient(gameClient);
 
     const handleAnyUpdate = (state: ClientState) => {
-      setClientState({...state});
+      setClientState({ ...state });
     };
 
     const handleMove = () => {
       if (moveSound) {
-        moveSound.play().catch(err => console.error("Error playing sound:", err));
+        moveSound
+          .play()
+          .catch((err) => console.error("Error playing sound:", err));
       }
     };
 
@@ -63,10 +70,10 @@ export default function GameRoom({ params }: { params: { roomId: string } }) {
       gameClient.off("move", handleMove);
       gameClient.disconnect();
     };
-  }, [params.roomId, token, router, moveSound]);
+  }, [roomId, token, router, moveSound]);
 
   const handleBack = () => {
-    router.push('/dashboard');
+    router.push("/dashboard");
   };
 
   if (!client || !clientState) {
