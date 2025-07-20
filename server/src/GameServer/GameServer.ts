@@ -4,15 +4,13 @@ import http from "http";
 import https from "https";
 import * as SocketIO from "socket.io";
 
+import {authController} from "@/Auth/AuthController";
+import {authenticateSocket} from "@/Auth/AuthMiddleware";
 import {UserProfile} from "@/GameServer/Database";
 import {AuthPayload, ClientToServerEvents, GameRules, ServerToClientEvents, User} from "@/GameServer/DataModel";
 import {AuthError, RoomNotFoundError} from "@/GameServer/Errors";
 import {ServerRoom} from "@/GameServer/ServerRoom";
 import {catchErrors} from "@/GameServer/SocketErrorHandler";
-import {bot} from "@/index";
-import {joinFullName} from "@/Telegram/joinFullname";
-import {parseInitData} from "@/Telegram/parseInitData";
-import {WebAppInitData} from "@/Telegram/Types";
 
 const log = debug("GameServer");
 
@@ -48,7 +46,10 @@ export class GameServer {
 
         this.rooms = {};
 
-        this.validateInitData = config.get<boolean>("gameServer.validateInitData");
+        this.validateInitData = false; // No longer using Telegram validation
+
+        // Use our authentication middleware
+        // this.io.use(authenticateSocket);
 
         this.io.on("connect", (socket: Socket) => {
             catchErrors(socket)(this.handleConnection)(socket);
@@ -88,40 +89,35 @@ export class GameServer {
         log("New connection");
 
         const authPayload = socket.handshake.auth as AuthPayload;
-
-        const initData: WebAppInitData = parseInitData(authPayload.initData, this.validateInitData);
-
-        const roomID = initData.start_param;
+        const roomID = authPayload.roomId;
 
         if (!roomID) {
-            throw new AuthError('Launched with no "startapp" param');
-        }
-
-        if (!initData.user) {
-            throw new AuthError("Information about the user was not provided");
+            throw new AuthError('Room ID not provided');
         }
 
         if (!this.rooms[roomID]) {
             throw new RoomNotFoundError(`Room with id "${roomID}" was not found`);
         }
 
-        const user: User = {
-            id: initData.user.id,
-            fullName: joinFullName(initData.user.first_name, initData.user.last_name),
-            username: initData.user.username,
-            avatarURL: await bot.getAvatar(initData.user.id),
-        };
+        // Get user ID from socket data (set by authenticateSocket middleware)
+        const userId = socket.data.userId;
+        
+        // Get user from database
+        const userProfile = await UserProfile.findByPk(userId);
+        if (!userProfile) {
+            throw new AuthError("User not found");
+        }
 
-        await UserProfile.upsert({
-            id: user.id,
-            fullName: user.fullName,
-            username: user.username,
-            languageCode: initData.user.language_code,
-        });
+        const user: User = {
+            id: userProfile.id,
+            email: userProfile.email,
+            fullName: userProfile.fullName,
+            username: userProfile.username || undefined,
+            avatarURL: userProfile.avatarURL || undefined,
+        };
 
         log("User(%d: %s) trying to connect to room %s", user.id, user.fullName, roomID);
 
-        //The user may have already disconnected while the server was retrieving his profile picture
         if (socket.connected) {
             this.rooms[roomID].acceptConnection(socket, user);
         }

@@ -34,10 +34,14 @@ const sequelize = new Sequelize({
 });
 
 export class UserProfile extends Model<InferAttributes<UserProfile>, InferCreationAttributes<UserProfile>> {
-    declare id: number;
+    declare id: CreationOptional<number>;
+    declare email: string;
+    declare password: string;
     declare fullName: string;
     declare username: string | null;
-    declare languageCode: string | null;
+    declare verified: boolean;
+    declare avatarURL: string | null;
+    declare lastLogin: Date | null;
 
     declare createdAt: CreationOptional<Date>;
     declare updatedAt: CreationOptional<Date>;
@@ -75,6 +79,18 @@ UserProfile.init(
         id: {
             type: DataTypes.INTEGER,
             primaryKey: true,
+            autoIncrement: true,
+        },
+        email: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            unique: true,
+            validate: {
+                isEmail: true,
+            },
+        },
+        password: {
+            type: DataTypes.STRING,
             allowNull: false,
         },
         fullName: {
@@ -84,9 +100,18 @@ UserProfile.init(
         username: {
             type: DataTypes.STRING,
             defaultValue: null,
+            unique: true,
         },
-        languageCode: {
+        verified: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false,
+        },
+        avatarURL: {
             type: DataTypes.STRING,
+            defaultValue: null,
+        },
+        lastLogin: {
+            type: DataTypes.DATE,
             defaultValue: null,
         },
         createdAt: DataTypes.DATE,

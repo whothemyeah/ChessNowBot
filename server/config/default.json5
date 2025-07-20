@@ -1,14 +1,14 @@
 {
-    bot: {
-        testEnv: false,
-    },
     server: {
         https: false,
-        port: 3000,
+        port: 8080,
         static: false,
     },
+    auth: {
+        jwtSecret: "30f7181cdd746c619d33f84eac7bffa9ed07976a0fd594d2446b2557d313b195",
+        jwtExpiresIn: "7d",
+    },
     gameServer: {
-        validateInitData: true,
         inactivityTimeout: 300,
         disconnectTimeout: 180,
         fakeRoom: {
