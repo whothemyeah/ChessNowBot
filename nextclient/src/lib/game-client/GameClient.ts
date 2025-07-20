@@ -203,7 +203,7 @@ export class GameClient extends TypedEventEmitter<GameClientEvents> {
     };
 
     private readonly handleInit = (room: Room, userID: number): void => {
-        const membersDict = {};
+        const membersDict: { [key: number]: Member } = {};
         let me: Member;
         const opponent: Member | undefined = undefined;
 
