@@ -135,10 +135,20 @@ const GamePage: React.FC<GamePageProps> = ({ room, makingMove, gameClient }) => 
     
     // Highlight possible moves
     possibleMoves.forEach(move => {
-      styles[move.to] = {
-        background: 'radial-gradient(circle, rgba(0,0,0,0.1) 25%, transparent 25%)',
-        cursor: 'pointer',
-      };
+      if (move.captured) {
+        // Highlight capturable pieces with a red border
+        styles[move.to] = {
+          backgroundColor: 'rgba(255, 0, 0, 0.2)',
+          border: '2px solid rgba(255, 0, 0, 0.7)',
+          cursor: 'pointer',
+        };
+      } else {
+        // Regular move dots
+        styles[move.to] = {
+          background: 'radial-gradient(circle, rgba(0,0,0,0.1) 25%, transparent 25%)',
+          cursor: 'pointer',
+        };
+      }
     });
     
     // Highlight check
