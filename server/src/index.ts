@@ -13,6 +13,7 @@ import path from "path";
 import {GameServer} from "@/GameServer/GameServer";
 import authRoutes from "@/Auth/AuthRoutes";
 import roomRoutes from "@/GameServer/RoomRoutes";
+import gameRoutes from "@/GameServer/GameRoutes";
 import { setGameServerInstance } from "@/GameServer/RoomRoutes";
 
 // Create Express app
@@ -26,6 +27,11 @@ app.use(express.urlencoded({ extended: true }));
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
+app.use('/api/games', gameRoutes);
+app.use('/api/game-modes', (req, res) => {
+    const { getAllGameModes } = require('@/GameServer/GameModes');
+    res.json({ gameModes: getAllGameModes() });
+});
 
 // Serve static files
 if (config.get<boolean>("server.static")) {

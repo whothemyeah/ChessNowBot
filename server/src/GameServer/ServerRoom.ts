@@ -49,6 +49,11 @@ export const InactivityTimeout = config.get<number>("gameServer.inactivityTimeou
 //If user disconnects mid-game for more than 1 minute, he automatically looses
 export const DisconnectTimeout = config.get<number>("gameServer.disconnectTimeout") * 1000;
 
+// Get the disconnect timeout in seconds
+export const getDisconnectTimeoutSeconds = (): number => {
+    return config.get<number>("gameServer.disconnectTimeout");
+};
+
 export class ServerRoom extends TypedEventEmitter<ServerRoomEvents> {
     public readonly id: string;
 

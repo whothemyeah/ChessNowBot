@@ -128,8 +128,11 @@ export class PlayedGame extends Model<InferAttributes<PlayedGame>, InferCreation
     declare pgn: string;
     declare resolution: GameResolution;
     declare winner: Color | null;
+    declare gameMode: string | null;
+    declare lastMoveTimestamp: number | null;
 
     declare createdAt: CreationOptional<Date>;
+    declare updatedAt: CreationOptional<Date>;
 
     declare whitePlayerID: ForeignKey<UserProfile["id"]>;
     declare blackPlayerID: ForeignKey<UserProfile["id"]>;
@@ -179,11 +182,19 @@ PlayedGame.init(
             type: DataTypes.STRING,
             allowNull: true,
         },
+        gameMode: {
+            type: DataTypes.STRING,
+            allowNull: true,
+        },
+        lastMoveTimestamp: {
+            type: DataTypes.NUMBER,
+            allowNull: true,
+        },
         createdAt: DataTypes.DATE,
+        updatedAt: DataTypes.DATE,
     },
     {
         sequelize,
-        updatedAt: false,
         indexes: [
             {
                 unique: false,
