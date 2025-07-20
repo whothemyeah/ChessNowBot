@@ -13,7 +13,7 @@ A standalone web application for playing chess online with friends. Built with N
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14, TypeScript, TailwindCSS, Material UI
+- **Frontend**: Next.js 15, TypeScript, TailwindCSS, Material UI
 - **State Management**: React Context API
 - **Real-time Communication**: Socket.IO
 - **Authentication**: JWT (JSON Web Tokens)

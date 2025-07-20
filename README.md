@@ -1,29 +1,33 @@
 # Chess Now Web Application
 
-Chess Now is a web-based chess application that allows users to play chess games online. This application was originally built as a Telegram Mini App and has been converted to a standalone web application.
+Chess Now is a web-based chess application that allows users to play chess games online. This application was originally built as a Telegram Mini App and has been converted to a standalone web application using Next.js.
 
 ## Features
 
 - User authentication with email/password
 - Create and join chess games
-- Real-time gameplay with WebSockets
+- Real-time gameplay with Socket.IO
 - Customizable game settings (time controls, preferred color)
 - User profiles
 - Responsive design for desktop and mobile
 
 ## Technology Stack
 
-- **Frontend**: React, TypeScript, Material-UI, Socket.io Client
+- **Frontend**: Next.js 15, TypeScript, TailwindCSS, Material UI, Socket.io Client
 - **Backend**: Node.js, Express, Socket.io, Sequelize (SQLite)
 - **Authentication**: JWT (JSON Web Tokens)
+- **Chess Logic**: chess.js
+- **Chess Board UI**: react-chessboard
 
 ## Project Structure
 
-- `/client` - React frontend application
-  - `/src/Auth` - Authentication components and context
-  - `/src/Dashboard` - Dashboard and game creation components
-  - `/src/GameClient` - Game client logic and WebSocket communication
-  - `/src/GameView` - Chess board and game UI components
+- `/client` - Next.js frontend application
+  - `/src/app` - Next.js app router pages
+  - `/src/components` - React components
+    - `/game` - Game-related components
+  - `/src/lib` - Utility functions and hooks
+    - `/auth` - Authentication utilities
+    - `/game-client` - Game client logic and WebSocket communication
 
 - `/server` - Node.js backend application
   - `/src/Auth` - Authentication controllers and middleware
@@ -34,7 +38,7 @@ Chess Now is a web-based chess application that allows users to play chess games
 
 ### Prerequisites
 
-- Node.js (v14 or higher)
+- Node.js (v18.17 or higher)
 - npm or yarn
 
 ### Installation
@@ -62,7 +66,12 @@ Chess Now is a web-based chess application that allows users to play chess games
 1. Create a `.env` file in the server directory with the following variables:
    ```
    JWT_SECRET=your_jwt_secret_key
-   PORT=3000
+   PORT=8080
+   ```
+
+2. Create a `.env.local` file in the client directory with the following variables:
+   ```
+   NEXT_PUBLIC_SERVER_URL=http://localhost:8080
    ```
 
 ### Running the Application
@@ -79,7 +88,7 @@ Chess Now is a web-based chess application that allows users to play chess games
    npm run dev
    ```
 
-3. Open your browser and navigate to `http://localhost:5173`
+3. Open your browser and navigate to `http://localhost:3000`
 
 ## Authentication Flow
 
@@ -98,6 +107,22 @@ Chess Now is a web-based chess application that allows users to play chess games
 5. Game starts when both players are connected
 6. Players make moves in real-time
 7. Game ends when checkmate, stalemate, or time runs out
+
+## Deployment
+
+The application can be deployed to any platform that supports Next.js applications, such as Vercel, Netlify, or a custom server.
+
+### Build for Production
+
+```bash
+# Build the client
+cd client
+npm run build
+
+# Build the server
+cd ../server
+npm run build
+```
 
 ## License
 
