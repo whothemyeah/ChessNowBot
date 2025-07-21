@@ -1,7 +1,7 @@
 import express from 'express';
 import { authenticateRequest } from '@/Auth/AuthMiddleware';
 import { GameServer } from '@/GameServer/GameServer';
-import { GameRules } from '@/GameServer/DataModel';
+import { GameRules, User } from '@/GameServer/DataModel';
 
 // Reference to the GameServer instance
 let gameServerInstance: GameServer | null = null;
@@ -42,8 +42,17 @@ router.post('/', authenticateRequest, async (req, res) => {
         // Get user from request (set by authenticateRequest middleware)
         const user = req.user!;
         
+        // Create user model
+        const userModel: User = {
+            id: user.id,
+            email: user.email,
+            fullName: user.fullName,
+            username: user.username || undefined,
+            avatarURL: user.avatarURL || undefined,
+        };
+        
         // Create a new room
-        const room = gameServerInstance.createRoom(validatedGameRules);
+        const room = gameServerInstance.createRoom(userModel, validatedGameRules);
 
         // Return the room ID
         res.status(201).json({ roomId: room.id });

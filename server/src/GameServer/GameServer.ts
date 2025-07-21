@@ -49,149 +49,94 @@ export class GameServer {
 
         this.validateInitData = false; // No longer using Telegram validation
 
-        this.io.on("connection", this.handleConnection.bind(this));
-    }
-
-    /**
-     * Handle new socket connection
-     */
-    private async handleConnection(socket: Socket) {
-        log("New connection: %s", socket.id);
-
-        // Authenticate the connection
-        socket.on(
-            "auth",
-            catchErrors(socket, async (payload: AuthPayload) => {
-                try {
-                    // Verify the JWT token
-                    const tokenPayload = authController.verifyToken(payload.token);
-                    
-                    // Get user from database
-                    const user = await prisma.userProfile.findUnique({
-                        where: { id: tokenPayload.userId }
-                    });
-                    
-                    if (!user) {
-                        throw new AuthError("User not found");
-                    }
-
-                    // Store user ID in socket data
-                    socket.data.userId = user.id;
-
-                    // Send auth success event
-                    socket.emit("auth:success", {
-                        id: user.id,
-                        fullName: user.fullName,
-                        username: user.username || undefined,
-                        avatarURL: user.avatarURL || undefined,
-                    });
-
-                    // Set up event handlers for authenticated socket
-                    this.setupAuthenticatedSocket(socket);
-                } catch (error) {
-                    if (error instanceof AuthError) {
-                        socket.emit("auth:error", { message: error.message });
-                    } else {
-                        throw error;
-                    }
-                }
-            })
-        );
-    }
-
-    /**
-     * Set up event handlers for authenticated socket
-     */
-    private setupAuthenticatedSocket(socket: Socket) {
-        // Join room
-        socket.on(
-            "room:join",
-            catchErrors(socket, async (roomId: string) => {
-                const room = this.rooms[roomId];
-                if (!room) {
-                    throw new RoomNotFoundError(roomId);
-                }
-
-                // Get user from database
-                const user = await prisma.userProfile.findUnique({
-                    where: { id: socket.data.userId! }
-                });
-                
-                if (!user) {
-                    throw new AuthError("User not found");
-                }
-
-                // Join the room
-                const userModel: User = {
-                    id: user.id,
-                    fullName: user.fullName,
-                    username: user.username || undefined,
-                    avatarURL: user.avatarURL || undefined,
-                };
-                
-                await room.join(socket, userModel);
-            })
-        );
-
-        // Create room
-        socket.on(
-            "room:create",
-            catchErrors(socket, async (rules: GameRules) => {
-                // Get user from database
-                const user = await prisma.userProfile.findUnique({
-                    where: { id: socket.data.userId! }
-                });
-                
-                if (!user) {
-                    throw new AuthError("User not found");
-                }
-
-                // Create user model
-                const userModel: User = {
-                    id: user.id,
-                    fullName: user.fullName,
-                    username: user.username || undefined,
-                    avatarURL: user.avatarURL || undefined,
-                };
-
-                // Create the room
-                const room = new ServerRoom(this.io, rules);
-                this.rooms[room.id] = room;
-
-                // Join the room
-                await room.join(socket, userModel);
-
-                // Return room ID
-                socket.emit("room:created", room.id);
-            })
-        );
-
-        // Disconnect handler
-        socket.on("disconnect", () => {
-            log("Socket disconnected: %s", socket.id);
+        // We'll handle authentication in the connection handler
+        this.io.on("connect", (socket: Socket) => {
+            catchErrors(socket)(this.handleConnection)(socket);
         });
+
+        log("GameServer instance was created");
+
+        if (config.get<boolean>("gameServer.fakeRoom.create")) {
+            const id = config.get<string>("gameServer.fakeRoom.id");
+            const host = config.get<User>("gameServer.fakeRoom.host");
+            const fakeRoomGameRules = config.get<GameRules>("gameServer.fakeRoom.gameRules");
+
+            this.createRoom(host, fakeRoomGameRules, id);
+            log('Fake room("%s") was created', id);
+        }
     }
 
-    /**
-     * Get a room by ID
-     */
-    public getRoom(roomId: string): ServerRoom | undefined {
-        return this.rooms[roomId];
+    public get roomCount(): number {
+        return Object.keys(this.rooms).length;
     }
 
-    /**
-     * Create a new room with the given rules
-     */
-    public createRoom(rules: GameRules): ServerRoom {
-        const room = new ServerRoom(this.io, rules);
+    public createRoom = (host: User, gameRules: GameRules, id?: string): ServerRoom => {
+        const room = new ServerRoom(host, gameRules, id);
         this.rooms[room.id] = room;
+        room.on("destroy", () => {
+            this.handleRoomDestroy(room.id);
+        });
         return room;
-    }
+    };
 
-    /**
-     * Delete a room
-     */
-    public deleteRoom(roomId: string): void {
-        delete this.rooms[roomId];
-    }
+    private handleRoomDestroy = async (roomID: string) => {
+        delete this.rooms[roomID];
+        log('Room("%s") was destroyed', roomID);
+    };
+
+    private handleConnection = async (socket: Socket) => {
+        log("New connection");
+
+        try {
+            // Authenticate the user
+            const token = socket.handshake.auth.token;
+            if (!token) {
+                throw new AuthError('Authentication token required');
+            }
+
+            // Verify the token
+            const payload = authController.verifyToken(token);
+            const userId = payload.userId;
+
+            const authPayload = socket.handshake.auth as AuthPayload;
+            const roomID = authPayload.roomId;
+
+            if (!roomID) {
+                throw new AuthError('Room ID not provided');
+            }
+
+            if (!this.rooms[roomID]) {
+                throw new RoomNotFoundError(`Room with id "${roomID}" was not found`);
+            }
+            
+            // Get user from database using Prisma
+            const userProfile = await prisma.userProfile.findUnique({
+                where: { id: userId }
+            });
+            
+            if (!userProfile) {
+                throw new AuthError("User not found");
+            }
+
+            const user: User = {
+                id: userProfile.id,
+                email: userProfile.email,
+                fullName: userProfile.fullName,
+                username: userProfile.username || undefined,
+                avatarURL: userProfile.avatarURL || undefined,
+            };
+
+            log("User(%d: %s) trying to connect to room %s", user.id, user.fullName, roomID);
+
+            if (socket.connected) {
+                this.rooms[roomID].acceptConnection(socket, user);
+            }
+        } catch (error) {
+            log("Authentication error: %o", error);
+            const errorName = error instanceof Error ? error.name : "Error";
+            const errorMessage = error instanceof Error ? error.message : "Authentication failed";
+            socket.emit("error", errorName, errorMessage);
+            socket.disconnect(true);
+        }
+    };
 }
