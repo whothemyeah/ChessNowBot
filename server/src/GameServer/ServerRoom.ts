@@ -6,7 +6,7 @@ import ShortUniqueId from "short-unique-id";
 import {DisconnectReason} from "socket.io";
 import {EventNames, EventParams} from "socket.io/dist/typed-events";
 
-import {PlayedGame} from "@/GameServer/Database";
+import {prisma} from "@/lib/prisma";
 import {
     Color,
     GameResolution,
@@ -285,8 +285,8 @@ export class ServerRoom extends TypedEventEmitter<ServerRoomEvents> {
             winner = Color.Black;
         }
 
-        await PlayedGame.create(
-            {
+        await prisma.playedGame.create({
+            data: {
                 id: this.id,
                 timerEnabled: this.gameRules.timer,
                 timerInit: this.gameRules.initialTime || 0,
@@ -297,8 +297,7 @@ export class ServerRoom extends TypedEventEmitter<ServerRoomEvents> {
                 whitePlayerID: this.whitePlayerID!,
                 blackPlayerID: this.blackPlayerID!,
             },
-            {}
-        );
+        });
     };
 
     private readonly handleDisconnectTimeout = async (userID: number): Promise<void> => {

@@ -58,6 +58,7 @@ export interface ClientState {
 export interface PossibleMove {
     to: Square;
     promotion: boolean;
+    captured?: boolean; // Indicates if this move captures an opponent's piece
 }
 
 type Socket = SocketIO.Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -143,6 +144,7 @@ export class GameClient extends TypedEventEmitter<GameClientEvents> {
                 squareToMoveMap[move.to] = {
                     to: move.to as Square,
                     promotion: false,
+                    captured: Boolean(move.captured), // Set captured flag if this move captures a piece
                 };
             }
 
@@ -169,7 +171,8 @@ export class GameClient extends TypedEventEmitter<GameClientEvents> {
     };
 
     public getPieceColor = (square: Square): Color | undefined => {
-        return this.chess.get(square as ChessJS.Square).color as Color;
+        const piece = this.chess.get(square as ChessJS.Square);
+        return piece ? piece.color as Color : undefined;
     };
 
     public readonly giveUp = (): void => {

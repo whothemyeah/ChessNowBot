@@ -1,7 +1,8 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import config from 'config';
-import { UserProfile } from '@/GameServer/Database';
+import { prisma } from '@/lib/prisma';
+import { UserProfile } from '@/generated/prisma';
 
 // Authentication errors
 export class AuthError extends Error {
@@ -51,8 +52,8 @@ export class AuthController {
     private readonly jwtExpiresIn: string;
 
     constructor() {
-        this.jwtSecret = config.get<string>('auth.jwtSecret');
-        this.jwtExpiresIn = config.get<string>('auth.jwtExpiresIn');
+        this.jwtSecret = process.env.JWT_SECRET || config.get<string>('auth.jwtSecret');
+        this.jwtExpiresIn = process.env.JWT_EXPIRES_IN || config.get<string>('auth.jwtExpiresIn');
     }
 
     /**
@@ -60,14 +61,20 @@ export class AuthController {
      */
     public async register(userData: RegisterUserData): Promise<{ user: UserProfile; token: string }> {
         // Check if user with this email already exists
-        const existingUserByEmail = await UserProfile.findOne({ where: { email: userData.email } });
+        const existingUserByEmail = await prisma.userProfile.findUnique({
+            where: { email: userData.email }
+        });
+        
         if (existingUserByEmail) {
             throw new UserExistsError('email');
         }
 
         // Check if user with this username already exists (if username provided)
         if (userData.username) {
-            const existingUserByUsername = await UserProfile.findOne({ where: { username: userData.username } });
+            const existingUserByUsername = await prisma.userProfile.findUnique({
+                where: { username: userData.username }
+            });
+            
             if (existingUserByUsername) {
                 throw new UserExistsError('username');
             }
@@ -77,13 +84,15 @@ export class AuthController {
         const hashedPassword = await bcrypt.hash(userData.password, this.saltRounds);
 
         // Create the user
-        const user = await UserProfile.create({
-            email: userData.email,
-            password: hashedPassword,
-            fullName: userData.fullName,
-            username: userData.username || null,
-            verified: false,
-            lastLogin: new Date(),
+        const user = await prisma.userProfile.create({
+            data: {
+                email: userData.email,
+                password: hashedPassword,
+                fullName: userData.fullName,
+                username: userData.username || null,
+                verified: false,
+                lastLogin: new Date(),
+            }
         });
 
         // Generate JWT token
@@ -97,7 +106,10 @@ export class AuthController {
      */
     public async login(loginData: LoginUserData): Promise<{ user: UserProfile; token: string }> {
         // Find user by email
-        const user = await UserProfile.findOne({ where: { email: loginData.email } });
+        const user = await prisma.userProfile.findUnique({
+            where: { email: loginData.email }
+        });
+        
         if (!user) {
             throw new InvalidCredentialsError();
         }
@@ -109,13 +121,15 @@ export class AuthController {
         }
 
         // Update last login
-        user.lastLogin = new Date();
-        await user.save();
+        const updatedUser = await prisma.userProfile.update({
+            where: { id: user.id },
+            data: { lastLogin: new Date() }
+        });
 
         // Generate JWT token
-        const token = this.generateToken(user);
+        const token = this.generateToken(updatedUser);
 
-        return { user, token };
+        return { user: updatedUser, token };
     }
 
     /**

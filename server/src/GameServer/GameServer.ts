@@ -4,13 +4,12 @@ import http from "http";
 import https from "https";
 import * as SocketIO from "socket.io";
 
-import {authController} from "@/Auth/AuthController";
-import {authenticateSocket} from "@/Auth/AuthMiddleware";
-import {UserProfile} from "@/GameServer/Database";
-import {AuthPayload, ClientToServerEvents, GameRules, ServerToClientEvents, User} from "@/GameServer/DataModel";
-import {AuthError, RoomNotFoundError} from "@/GameServer/Errors";
-import {ServerRoom} from "@/GameServer/ServerRoom";
-import {catchErrors} from "@/GameServer/SocketErrorHandler";
+import { authController } from "@/Auth/AuthController";
+import { prisma } from "@/lib/prisma";
+import { AuthPayload, ClientToServerEvents, GameRules, ServerToClientEvents, User } from "@/GameServer/DataModel";
+import { AuthError, RoomNotFoundError } from "@/GameServer/Errors";
+import { ServerRoom } from "@/GameServer/ServerRoom";
+import { catchErrors } from "@/GameServer/SocketErrorHandler";
 
 const log = debug("GameServer");
 
@@ -24,7 +23,9 @@ export type Socket = SocketIO.Socket<
     ClientToServerEvents,
     ServerToClientEvents,
     Record<string, never>,
-    Record<string, never>
+    {
+        userId?: number;
+    }
 >;
 
 export class GameServer {
@@ -48,9 +49,7 @@ export class GameServer {
 
         this.validateInitData = false; // No longer using Telegram validation
 
-        // Use our authentication middleware
-        // this.io.use(authenticateSocket);
-
+        // We'll handle authentication in the connection handler
         this.io.on("connect", (socket: Socket) => {
             catchErrors(socket)(this.handleConnection)(socket);
         });
@@ -88,38 +87,56 @@ export class GameServer {
     private handleConnection = async (socket: Socket) => {
         log("New connection");
 
-        const authPayload = socket.handshake.auth as AuthPayload;
-        const roomID = authPayload.roomId;
+        try {
+            // Authenticate the user
+            const token = socket.handshake.auth.token;
+            if (!token) {
+                throw new AuthError('Authentication token required');
+            }
 
-        if (!roomID) {
-            throw new AuthError('Room ID not provided');
-        }
+            // Verify the token
+            const payload = authController.verifyToken(token);
+            const userId = payload.userId;
 
-        if (!this.rooms[roomID]) {
-            throw new RoomNotFoundError(`Room with id "${roomID}" was not found`);
-        }
+            const authPayload = socket.handshake.auth as AuthPayload;
+            const roomID = authPayload.roomId;
 
-        // Get user ID from socket data (set by authenticateSocket middleware)
-        const userId = socket.data.userId;
-        
-        // Get user from database
-        const userProfile = await UserProfile.findByPk(userId);
-        if (!userProfile) {
-            throw new AuthError("User not found");
-        }
+            if (!roomID) {
+                throw new AuthError('Room ID not provided');
+            }
 
-        const user: User = {
-            id: userProfile.id,
-            email: userProfile.email,
-            fullName: userProfile.fullName,
-            username: userProfile.username || undefined,
-            avatarURL: userProfile.avatarURL || undefined,
-        };
+            if (!this.rooms[roomID]) {
+                throw new RoomNotFoundError(`Room with id "${roomID}" was not found`);
+            }
+            
+            // Get user from database using Prisma
+            const userProfile = await prisma.userProfile.findUnique({
+                where: { id: userId }
+            });
+            
+            if (!userProfile) {
+                throw new AuthError("User not found");
+            }
 
-        log("User(%d: %s) trying to connect to room %s", user.id, user.fullName, roomID);
+            const user: User = {
+                id: userProfile.id,
+                email: userProfile.email,
+                fullName: userProfile.fullName,
+                username: userProfile.username || undefined,
+                avatarURL: userProfile.avatarURL || undefined,
+            };
 
-        if (socket.connected) {
-            this.rooms[roomID].acceptConnection(socket, user);
+            log("User(%d: %s) trying to connect to room %s", user.id, user.fullName, roomID);
+
+            if (socket.connected) {
+                this.rooms[roomID].acceptConnection(socket, user);
+            }
+        } catch (error) {
+            log("Authentication error: %o", error);
+            const errorName = error instanceof Error ? error.name : "Error";
+            const errorMessage = error instanceof Error ? error.message : "Authentication failed";
+            socket.emit("error", errorName, errorMessage);
+            socket.disconnect(true);
         }
     };
 }

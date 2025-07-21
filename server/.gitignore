@@ -27,3 +27,4 @@ dist-ssr
 config/local*
 public
 db.sqlite
+/src/generated/prisma
