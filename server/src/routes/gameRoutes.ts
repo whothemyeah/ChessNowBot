@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticateRequest } from '@/Auth/PrismaAuthMiddleware';
+import { authenticateRequest } from '@/Auth/AuthMiddleware';
 import { gameService } from '@/GameServer/GameService';
 
 const router = express.Router();

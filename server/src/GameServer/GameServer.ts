@@ -4,7 +4,7 @@ import http from "http";
 import https from "https";
 import * as SocketIO from "socket.io";
 
-import { authController } from "@/Auth/PrismaAuthController";
+import { authController } from "@/Auth/AuthController";
 import { prisma } from "@/lib/prisma";
 import { AuthPayload, ClientToServerEvents, GameRules, ServerToClientEvents, User } from "@/GameServer/DataModel";
 import { AuthError, RoomNotFoundError } from "@/GameServer/Errors";

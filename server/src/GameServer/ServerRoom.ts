@@ -296,8 +296,8 @@ export class ServerRoom extends TypedEventEmitter<ServerRoomEvents> {
                 winner: winner,
                 whitePlayerID: this.whitePlayerID!,
                 blackPlayerID: this.blackPlayerID!,
-            }
-        );
+            },
+        });
     };
 
     private readonly handleDisconnectTimeout = async (userID: number): Promise<void> => {

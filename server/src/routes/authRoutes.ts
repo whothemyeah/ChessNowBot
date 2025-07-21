@@ -1,6 +1,6 @@
 import express from 'express';
-import { authController, InvalidCredentialsError, UserExistsError } from '@/Auth/PrismaAuthController';
-import { authenticateRequest } from '@/Auth/PrismaAuthMiddleware';
+import { authController, InvalidCredentialsError, UserExistsError } from '@/Auth/AuthController';
+import { authenticateRequest } from '@/Auth/AuthMiddleware';
 
 const router = express.Router();
 

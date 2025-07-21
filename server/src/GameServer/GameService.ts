@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/prisma';
-import { Color, GameResolution } from '@/GameServer/DataModel.js';
 
 // Game mode interface
 export interface GameMode {

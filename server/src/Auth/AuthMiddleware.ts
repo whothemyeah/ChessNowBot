@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { authController, AuthError } from '@/Auth/PrismaAuthController';
+import { authController, AuthError } from '@/Auth/AuthController';
 import { prisma } from '@/lib/prisma';
 import { UserProfile } from '@/generated/prisma';
 
